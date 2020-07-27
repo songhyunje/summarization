@@ -1,0 +1,6 @@
+torch
+transformers
+pytorch-lightning >= 0.7.5
+rouge-score
+dash
+dash-bootstrap-components
