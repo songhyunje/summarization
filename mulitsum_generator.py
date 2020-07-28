@@ -7,8 +7,8 @@ import numpy as np
 import torch
 
 from src.common.score import rouge_scorer
-from src.single_summary.singlesum import Summarization
-from src.single_summary.translator import build_predictor
+from src.multi_summary.multisum import MDS
+from src.multi_summary.translator import build_predictor
 
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -25,10 +25,17 @@ parser.add_argument(
     type=float,
     help="The value of alpha for the length penalty in the beam search.",
 )
-parser.add_argument("--input", default='../../input.txt', type=str)
-parser.add_argument("--result", default='result.txt', type=str)
+parser.add_argument("--input", default='../../data/multi/multi_input.txt', type=str)
+parser.add_argument("--result", default='../../data/multi/result_kt_multisum.txt', type=str)
 parser.add_argument(
     "--beam_size", default=5, type=int, help="The number of beams to start with for each example.",
+)
+parser.add_argument(
+    "--max_src_seq_length",
+    default=512,
+    type=int,
+    help="The maximum total input sequence length after tokenization. Sequences longer "
+         "than this will be truncated, sequences shorter will be padded.",
 )
 parser.add_argument(
     "--min_length", default=30, type=int, help="Minimum number of tokens for the summaries.",
@@ -46,13 +53,14 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+
+logging.basicConfig(level=getattr(logging, 'INFO'))
 logger = logging.getLogger(__name__)
 
 checkpoints = list(sorted(glob.glob(os.path.join(args.checkpoint_dir, "checkpointepoch=*.ckpt"), recursive=True)))
 logger.info("Load model from %s", checkpoints[-1])
 logger.info("Device %s", args.device)
-summarizer = Summarization.load_from_checkpoint(checkpoints[-1], map_location=args.device)
-logger.info(summarizer.__dict__)
+summarizer = MDS.load_from_checkpoint(checkpoints[-1], map_location=args.device)
 
 tokenizer = summarizer.tokenizer
 model = summarizer.model
@@ -72,35 +80,34 @@ scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'])
 rouge1, rougeL, results = [], [], []
 with open(args.input) as f:
     for i, line in enumerate(f):
-        src, target = line.split('|||||')
-        src = src.strip()
-        target = target.strip()
+        tokens = line.split("|||||")
+        srcs = tokens[:-1]
+        target = tokens[-1].strip()
 
-        sent_tokenized = tokenizer.encode_plus(src, max_length=512, pad_to_max_length=True, return_tensors="pt")
-        sent_tokenized['input_ids'] = sent_tokenized['input_ids'].to(args.device)
-        sent_tokenized['attention_mask'] = sent_tokenized['attention_mask'].to(args.device)
+        sources = []
+        for src in srcs:
+            sent_tokenized = tokenizer.encode_plus(
+                src, max_length=args.max_src_seq_length, pad_to_max_length=True, return_tensors="pt"
+            )
+            sent_tokenized['input_ids'] = sent_tokenized['input_ids'].to(args.device)
+            sent_tokenized['attention_mask'] = sent_tokenized['attention_mask'].to(args.device)
+            sources.append(sent_tokenized)
 
-        for translate in translator.translate(sent_tokenized):
+        for translate in translator.translate(sources):
             pred = tokenizer.decode(translate)
 
-        logger.info("SOURCE: %s", src)
-        logger.info("TARGET: %s", target)
+        for idx, src in enumerate(srcs, 1):
+            logger.info("SOURCE%d: %s", idx, src)
+        logger.info("TARGET: %s", ''.join(target))
         logger.info("PRED: %s", ''.join(pred))
 
-        words_scores = scorer.score(''.join(target), ''.join(pred))
-        rouge1.append(words_scores['rouge1'].fmeasure)
-        rougeL.append(words_scores['rougeL'].fmeasure)
-
-        is_same = False
-        striped_target = ''.join(target.split())
-        striped_pred = ''.join(pred.split())
-        if striped_target == striped_pred or striped_pred in striped_target:
-            is_same = True
-
-        results.append((src, pred, is_same))
+        # words_scores = scorer.score(''.join(target), ''.join(pred))
+        # rouge1.append(words_scores['rouge1'].fmeasure)
+        # rougeL.append(words_scores['rougeL'].fmeasure)
+        # results.append(('|||||'.join(srcs), pred))
 
 logger.info("Rouge1: %f, RougeL: %f" % (np.mean(rouge1), np.mean(rougeL)))
 logger.info("Write the result to %s", args.result)
 with open(args.result, 'w') as f:
-    for src, pred, is_same in results:
-        f.write('%s|||||%s|||||%r\n' % (src, pred, is_same))
+    for src, pred in results:
+        f.write('%s|||||%s\n' % (src, pred))

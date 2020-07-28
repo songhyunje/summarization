@@ -54,7 +54,8 @@ class SummarizationDataset(Dataset):
                     "target_ids": target_ids, "target_mask": tgt_mask}
 
 
-class MDSDataset(Dataset):
+# Multi Document Summarization as Single Summary
+class MDSSSDataset(Dataset):
     def __init__(self, tokenizer, data_dir="./data/multi", type_path="train",
                  max_src_seq_length=1024, max_src_sent_length=300,
                  max_tgt_seq_length=120, sample=None):
@@ -89,6 +90,44 @@ class MDSDataset(Dataset):
 
         return {"source_ids": source_ids, "source_mask": src_mask,
                 "target_ids": target_ids, "target_mask": tgt_mask}
+
+
+class MDSDataset(Dataset):
+    def __init__(self, tokenizer, data_dir="./data/multi", type_path="train",
+                 max_src_seq_length=512, max_tgt_seq_length=120, sample=None):
+        super(MDSDataset).__init__()
+        self.source = []
+        self.target = []
+
+        logging.info("Loading " + type_path + " txt")
+        with open(os.path.join(data_dir, type_path + ".txt"), "r") as f:
+            for text in f.readlines():  # each text is a line and a full story
+                tokens = text.split("|||||")
+                sources = []
+                for sent in tokens:
+                    src_tokenized = tokenizer.encode_plus(
+                        sent, max_length=max_src_seq_length, pad_to_max_length=True, return_tensors="pt"
+                    )
+                    sources.append(src_tokenized)
+                tgt_tokenized = tokenizer.encode_plus(
+                    tokens[-1], max_length=max_tgt_seq_length, pad_to_max_length=True, return_tensors="pt"
+                )
+                self.source.append(sources)
+                self.target.append(tgt_tokenized)
+                if sample and len(self.source) > sample:
+                    break
+
+    def __len__(self):
+        return len(self.source)
+
+    def __getitem__(self, index):
+        for src in self.source[index]:
+            src["input_ids"] = src["input_ids"].squeeze()
+            src["attention_mask"] = src["attention_mask"].squeeze()
+
+        target = {"input_ids": self.target[index]["input_ids"].squeeze(),
+                  "attention_mask": self.target[index]["attention_mask"].squeeze()}
+        return {"sources": self.source[index], "target": target}
 
 
 class MatchSumDataset(Dataset):

@@ -154,14 +154,14 @@ class Translator(object):
 
         src_features = self.model.bert(src, mask_src)
         dec_states = self.model.decoder.init_decoder_state(src, src_features, with_cache=True)
-        device = src_features[0].device
+        device = src_features[-1].device
 
         # encoder_hidden_states = encoder_output[0]
         # dec_state = self.decoder.init_decoder_state(encoder_input_ids, encoder_hidden_states)
 
         # Tile states and memory beam_size times.
         dec_states.map_batch_fn(lambda state, dim: tile(state, beam_size, dim=dim))
-        src_features = tile(src_features[0], beam_size, dim=0)
+        src_features = tile(src_features[-1], beam_size, dim=0)
         batch_offset = torch.arange(batch_size, dtype=torch.long, device=device)
         beam_offset = torch.arange(0, batch_size * beam_size, step=beam_size, dtype=torch.long, device=device)
         alive_seq = torch.full([batch_size * beam_size, 1], self.start_token, dtype=torch.long, device=device)
