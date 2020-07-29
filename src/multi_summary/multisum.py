@@ -63,6 +63,16 @@ class MDS(pl.LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         preds = self(batch)
 
+        targets = batch["target"]["input_ids"][:, 1:].reshape(-1)
+        preds = preds.view(-1, preds.size(2))
+        loss = F.nll_loss(preds, targets, ignore_index=0)
+
+        tensorboard_logs = {"train_loss": loss}
+        return {"loss": loss, "log": tensorboard_logs}
+
+    def training_step(self, batch, batch_idx):
+        preds = self(batch)
+
         # targets = batch["target_ids"][:, 1:].reshape(-1)
         targets = batch["target"]["input_ids"][:, 1:].reshape(-1)
         preds = preds.view(-1, preds.size(2))
@@ -98,16 +108,11 @@ class MDS(pl.LightningModule):
 
     def configure_optimizers(self):
         no_decay = ["bias", "LayerNorm.weight"]
-        encoder_optimizer_grouped_parameters = [
-            {
-                "params": [p for n, p in self.model.bert.named_parameters() if not any(nd in n for nd in no_decay)],
-                "weight_decay": self.hparams.weight_decay,
-            },
-            {
-                "params": [p for n, p in self.model.bert.named_parameters() if any(nd in n for nd in no_decay)],
-                "weight_decay": 0.0,
-            },
-        ]
+        t_total = (
+                (len(self.train_dataset) // (self.hparams.train_batch_size * max(1, self.hparams.gpus)))
+                // self.hparams.gradient_accumulation_steps
+                * float(self.hparams.num_train_epochs)
+        )
 
         decoder_named_parameters = list(chain(self.model.decoder.named_parameters(),
                                               self.model.generator.named_parameters()))
@@ -121,27 +126,34 @@ class MDS(pl.LightningModule):
                 "weight_decay": 0.0,
             },
         ]
-        encoder_optimizer = AdamW(encoder_optimizer_grouped_parameters,
-                                  lr=self.hparams.encoder_lr,
-                                  eps=self.hparams.adam_epsilon)
         decoder_optimizer = AdamW(decoder_optimizer_grouped_parameters,
                                   lr=self.hparams.decoder_lr,
                                   eps=self.hparams.adam_epsilon)
-
-        t_total = (
-                (len(self.train_dataset) // (self.hparams.train_batch_size * max(1, self.hparams.gpus)))
-                // self.hparams.gradient_accumulation_steps
-                * float(self.hparams.num_train_epochs)
-        )
-        encoder_scheduler = get_linear_schedule_with_warmup(
-            encoder_optimizer, num_warmup_steps=self.hparams.encoder_warmup, num_training_steps=t_total
-        )
         decoder_scheduler = get_linear_schedule_with_warmup(
             decoder_optimizer, num_warmup_steps=self.hparams.decoder_warmup, num_training_steps=t_total
         )
 
-        return [encoder_optimizer, decoder_optimizer], \
-               [encoder_scheduler, decoder_scheduler]
+        if not self.hparams.encoder_freeze:
+            encoder_optimizer_grouped_parameters = [
+                {
+                    "params": [p for n, p in self.model.bert.named_parameters() if not any(nd in n for nd in no_decay)],
+                    "weight_decay": self.hparams.weight_decay,
+                },
+                {
+                    "params": [p for n, p in self.model.bert.named_parameters() if any(nd in n for nd in no_decay)],
+                    "weight_decay": 0.0,
+                },
+            ]
+            encoder_optimizer = AdamW(encoder_optimizer_grouped_parameters,
+                                      lr=self.hparams.encoder_lr,
+                                      eps=self.hparams.adam_epsilon)
+            encoder_scheduler = get_linear_schedule_with_warmup(
+                encoder_optimizer, num_warmup_steps=self.hparams.encoder_warmup, num_training_steps=t_total
+            )
+
+            return [encoder_optimizer, decoder_optimizer], [encoder_scheduler, decoder_scheduler]
+
+        return [decoder_optimizer], [decoder_scheduler]
 
     # def optimizer_step(self, epoch, batch_nb, optimizer, optimizer_idx, second_order_closure=None):
     #     if optimizer_idx == 0:
@@ -250,6 +262,7 @@ class MDS(pl.LightningModule):
             required=True,
             help="The input data dir. Should contain the dataset files for the CNN/DM summarization task.",
         )
+        parser.add_argument("--encoder_freeze", action="store_true")
         parser.add_argument("--encoder_lr", default=2e-3, type=float, help="The initial learning rate for encoder.")
         parser.add_argument("--decoder_lr", default=1e-1, type=float, help="The initial learning rate for decoder.")
         parser.add_argument("--weight_decay", default=0.1, type=float, help="Weight decay if we apply some.")
@@ -257,10 +270,9 @@ class MDS(pl.LightningModule):
         parser.add_argument("--encoder_warmup", default=5000, type=int, help="Linear warmup over warmup_steps.")
         parser.add_argument("--decoder_warmup", default=2000, type=int, help="Linear warmup over warmup_steps.")
         parser.add_argument(
-            "--num_train_epochs", default=100, type=int, help="Total number of training epochs to perform."
+            "--num_train_epochs", default=20, type=int, help="Total number of training epochs to perform."
         )
         parser.add_argument("--share_emb", default=True)
-        parser.add_argument("--encoder_freeze", default=False)
         parser.add_argument("--train_batch_size", default=4, type=int)
         parser.add_argument("--eval_batch_size", default=2, type=int)
 

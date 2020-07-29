@@ -61,7 +61,6 @@ class TransformerDecoder(nn.Module):
         memory_bank = encoder_hidden_states
         memory_mask = encoder_attention_mask
 
-        # src_words = state.src
         src_words = state.src
         src_batch, src_len = src_words.size()
 

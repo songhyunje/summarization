@@ -147,19 +147,9 @@ class Translator(object):
 
         src = torch.cat(encoder_input_ids, dim=1)
         src_features = torch.cat(encoder_hidden_states, dim=1)
-        # print(src.size())
-        # print(src_features.size())
-        # print(src_features[-1].size())
-
-        # src = batch["input_ids"]
-        # mask_src = batch["attention_mask"]
-        # src_features = self.model.bert(src, mask_src)
 
         dec_states = self.model.decoder.init_decoder_state(src, src_features, with_cache=True)
         device = src_features.device
-
-        # encoder_hidden_states = encoder_output[0]
-        # dec_state = self.decoder.init_decoder_state(encoder_input_ids, encoder_hidden_states)
 
         # Tile states and memory beam_size times.
         dec_states.map_batch_fn(lambda state, dim: tile(state, beam_size, dim=dim))

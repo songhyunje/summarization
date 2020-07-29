@@ -54,7 +54,6 @@ checkpoints = list(sorted(glob.glob(os.path.join(args.checkpoint_dir, "checkpoin
 logger.info("Load model from %s", checkpoints[-1])
 logger.info("Device %s", args.device)
 summarizer = Summarization.load_from_checkpoint(checkpoints[-1], map_location=args.device)
-logger.info(summarizer.__dict__)
 
 tokenizer = summarizer.tokenizer
 model = summarizer.model
