@@ -19,7 +19,7 @@ def set_seed(args):
 
 
 def add_generic_args(parser):
-    parser.add_argumentㅇ(
+    parser.add_argument(
         "--output_dir",
         default=None,
         type=str,
