@@ -111,7 +111,8 @@ class Tokenizer(object):
             )
         return ids
 
-    def encode_plus(self, text, max_length=None, add_special_tokens=True, pad_to_max_length=False, return_tensors=None):
+    def encode_plus(self, text, max_length=None, add_special_tokens=True, pad_to_max_length=False,
+                    return_tensors=None, device='cpu'):
         if isinstance(text, str):
             tokens = self.tokenize(text, be_tok=add_special_tokens)
         else:
@@ -145,8 +146,8 @@ class Tokenizer(object):
             encoded_inputs["attention_mask"] = [1] * len(encoded_inputs["input_ids"])
 
         if return_tensors == "pt":
-            encoded_inputs["input_ids"] = torch.tensor([encoded_inputs["input_ids"]])
-            encoded_inputs["attention_mask"] = torch.tensor([encoded_inputs["attention_mask"]])
+            encoded_inputs["input_ids"] = torch.tensor([encoded_inputs["input_ids"]]).to(device)
+            encoded_inputs["attention_mask"] = torch.tensor([encoded_inputs["attention_mask"]]).to(device)
 
         return encoded_inputs
 
@@ -157,11 +158,6 @@ class Tokenizer(object):
                         return_tensors=None):
         tokens = []
         for text in list_of_text:
-            # tokenized = self.tokenize(text)
-            # if max_sent_length:
-            #     tokenized = tokenized[:max_sent_length - 1] + ['.']  # ends with period
-            # tokens += ['<!#s>'] + tokenized + ['<!#/s>']
-
             tokenized = self.tokenize(text, True)
             if max_sent_length:
                 tokenized = tokenized[:max_sent_length - 1] + ['<!#/s>']

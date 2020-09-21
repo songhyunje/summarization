@@ -10,3 +10,4 @@ corextopic
 dash
 dash-bootstrap-components
 kss
+pynori
