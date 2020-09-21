@@ -130,9 +130,43 @@ class MDSDataset(Dataset):
         return {"sources": self.source[index], "target": target}
 
 
+class TripleDataset(Dataset):
+    def __init__(self, tokenizer, data_dir="./data/triple", type_path="train",
+                 max_src_seq_length=512, max_tgt_seq_length=120, sample=None):
+        super(TripleDataset).__init__()
+        self.source = []
+        self.target = []
+
+        logging.info("Loading " + type_path + " txt")
+        with open(os.path.join(data_dir, type_path + ".txt"), "r") as f:
+            for text in f.readlines():  # each text is a line and a full story
+                triple, sent = text.strip().split("|||||")
+                src_tokenized = tokenizer.encode_plus(
+                    triple, max_length=max_src_seq_length, pad_to_max_length=True, return_tensors="pt"
+                )
+                tgt_tokenized = tokenizer.encode_plus(
+                    sent, max_length=max_tgt_seq_length, pad_to_max_length=True, return_tensors="pt"
+                )
+                self.source.append(src_tokenized)
+                self.target.append(tgt_tokenized)
+                if sample and len(self.source) > sample:
+                    break
+
+    def __len__(self):
+        return len(self.source)
+
+    def __getitem__(self, index):
+        source_ids = self.source[index]["input_ids"].squeeze()
+        target_ids = self.target[index]["input_ids"].squeeze()
+        src_mask = self.source[index]["attention_mask"].squeeze()
+        tgt_mask = self.target[index]["attention_mask"].squeeze()
+        return {"source_ids": source_ids, "source_mask": src_mask,
+                "target_ids": target_ids, "target_mask": tgt_mask}
+
+
 class MatchSumDataset(Dataset):
     def __init__(self, tokenizer, data_dir="./data/match", type_path="train",
-                 max_src_seq_length=512, max_tgt_seq_length=300, sample=None):
+                 max_src_seq_length=512, max_tgt_seq_length=300, num_cand=10, sample=None):
         super(MatchSumDataset).__init__()
         self.tokenizer = tokenizer
 
@@ -147,6 +181,8 @@ class MatchSumDataset(Dataset):
                 data = json.loads(text)
                 src = data['src']
                 tgt = data['tgt']
+                if len(data['cands']) < num_cand:
+                    continue
 
                 src_tokenized = tokenizer.encode_plus(
                     src, max_length=max_src_seq_length, pad_to_max_length=True, return_tensors="pt"
@@ -158,13 +194,13 @@ class MatchSumDataset(Dataset):
                 self.target.append(tgt_tokenized)
 
                 cands = []
-                for cand in data['cands']:
+                for cand in data['cands'][:num_cand]:
                     cand_tokenized = tokenizer.encode_plus(
-                        '. '.join(cand), max_length=max_tgt_seq_length, pad_to_max_length=True, return_tensors="pt"
+                        ' '.join(cand), max_length=max_tgt_seq_length, pad_to_max_length=True, return_tensors="pt"
                     )
                     cands.append(cand_tokenized)
                 self.cands.append(cands)
-                self.scores.append([np.mean(score) for score in data['scores']])
+                self.scores.append([np.mean(score) for score in data['scores'][:num_cand]])
 
                 if sample and len(self.source) > sample:
                     break
@@ -215,7 +251,7 @@ class MatchSumPredictDataset(Dataset):
                 cands = []
                 for cand in data['cands']:
                     cand_tokenized = tokenizer.encode_plus(
-                        '. '.join(cand), max_length=max_tgt_seq_length, pad_to_max_length=True, return_tensors="pt"
+                        ' '.join(cand), max_length=max_tgt_seq_length, pad_to_max_length=True, return_tensors="pt"
                     )
                     cand_tokenized['sentence'] = '. '.join(cand)
                     cands.append(cand_tokenized)
