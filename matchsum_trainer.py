@@ -7,7 +7,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 
-from src.multi_summary.multisum import MDS
+from src.match_summary.matchsum import MatchSum
 
 
 def set_seed(args):
@@ -19,7 +19,7 @@ def set_seed(args):
 
 
 def add_generic_args(parser):
-    parser.add_argument(
+    parser.add_argumentㅇ(
         "--output_dir",
         default=None,
         type=str,
@@ -49,7 +49,7 @@ def add_generic_args(parser):
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
-        default=10,
+        default=5,
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
     parser.add_argument("--overwrite_cache", action="store_true")
@@ -69,7 +69,7 @@ def main(args):
         filepath=args.output_dir, monitor="val_loss", prefix='checkpoint',
         verbose=True, mode="min", save_top_k=3)
 
-    model = MDS(args)
+    model = MatchSum(args)
 
     train_params = {}
     if args.fp16:
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     add_generic_args(parser)
-    parser = MDS.add_model_specific_args(parser)
+    parser = MatchSum.add_model_specific_args(parser)
     args = parser.parse_args()
 
     main(args)

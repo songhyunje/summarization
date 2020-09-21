@@ -87,10 +87,9 @@ with open(args.input) as f:
         sources = []
         for src in srcs:
             sent_tokenized = tokenizer.encode_plus(
-                src, max_length=args.max_src_seq_length, pad_to_max_length=True, return_tensors="pt"
+                src, max_length=args.max_src_seq_length, pad_to_max_length=True,
+                return_tensors="pt", device=args.device
             )
-            sent_tokenized['input_ids'] = sent_tokenized['input_ids'].to(args.device)
-            sent_tokenized['attention_mask'] = sent_tokenized['attention_mask'].to(args.device)
             sources.append(sent_tokenized)
 
         for translate in translator.translate(sources):

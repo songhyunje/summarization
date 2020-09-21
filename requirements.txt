@@ -1,6 +1,12 @@
-torch
+torch >= 1.5
 transformers
-pytorch-lightning >= 0.7.5
+pytorch-lightning >= 0.8
+scikit-learn
 rouge-score
+pyyaml
+elasticsearch
+elasticsearch_dsl
+corextopic
 dash
 dash-bootstrap-components
+kss

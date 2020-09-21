@@ -77,10 +77,8 @@ with open(args.input) as f:
         src = src.strip()
         target = target.strip()
 
-        sent_tokenized = tokenizer.encode_plus(src, max_length=512, pad_to_max_length=True, return_tensors="pt")
-        sent_tokenized['input_ids'] = sent_tokenized['input_ids'].to(args.device)
-        sent_tokenized['attention_mask'] = sent_tokenized['attention_mask'].to(args.device)
-
+        sent_tokenized = tokenizer.encode_plus(src, max_length=512, pad_to_max_length=True,
+                                               return_tensors="pt", device=args.device)
         for translate in translator.translate(sent_tokenized):
             pred = tokenizer.decode(translate)
 

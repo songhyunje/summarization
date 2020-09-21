@@ -106,9 +106,12 @@ class Translator(object):
         self.min_length = args.min_length
         self.max_length = args.max_length
 
-    def translate(self, batch, attn_debug=False):
-        """ Generates summaries from one batch of data.
-        """
+    def translate(self, batch, min_length=None, max_length=None):
+        if min_length is not None:
+            self.min_length = min_length
+        if max_length is not None:
+            self.max_length = max_length
+
         self.model.eval()
         with torch.no_grad():
             batch_data = self.translate_batch(batch)
