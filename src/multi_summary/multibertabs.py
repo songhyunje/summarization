@@ -64,7 +64,7 @@ class MultiBertAbs(nn.Module):
         self.generator[0].weight = self.decoder.embeddings.weight
 
         if self.hparams.load_from_single_model:
-            encoder_state_dict, decoder_state_dict, generator_state_dict = {}, {}, {}
+            decoder_state_dict, generator_state_dict = {}, {}
             for key in list(state_dict):
                 if key.startswith("model.decoder"):
                     decoder_state_dict[key[14:]] = state_dict.pop(key)
@@ -76,9 +76,9 @@ class MultiBertAbs(nn.Module):
         else:
             self.init_weights()
 
-        load_from_checkpoints = False if checkpoint is None else True
-        if load_from_checkpoints:
-            self.load_state_dict(checkpoint)
+        # load_from_checkpoints = False if checkpoint is None else True
+        # if load_from_checkpoints:
+        #     self.load_state_dict(checkpoint)
 
     def init_weights(self):
         for module in self.decoder.modules():
