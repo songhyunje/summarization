@@ -222,7 +222,7 @@ class Summarization(pl.LightningModule):
             help="The input data dir. Should contain the dataset files for the CNN/DM summarization task.",
         )
         parser.add_argument("--encoder_lr", default=5e-5, type=float, help="The initial learning rate for encoder.")
-        parser.add_argument("--decoder_lr", default=0.1, type=float, help="The initial learning rate for decoder.")
+        parser.add_argument("--decoder_lr", default=0.01, type=float, help="The initial learning rate for decoder.")
         parser.add_argument("--weight_decay", default=0.1, type=float, help="Weight decay if we apply some.")
         parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
         parser.add_argument("--encoder_warmup", default=5000, type=int, help="Linear warmup over warmup_steps.")

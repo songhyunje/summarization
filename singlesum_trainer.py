@@ -49,7 +49,7 @@ def add_generic_args(parser):
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
-        default=10,
+        default=2,
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
     parser.add_argument("--overwrite_cache", action="store_true")
