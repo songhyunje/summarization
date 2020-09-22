@@ -1,0 +1,1 @@
+python multisum_trainer.py --model_name_or_path ../resources/bert-kt-large --data_dir data/multi --output_dir multisum --load_from_single_model singlesum/checkpointepoch=28.ckpt --gpus 2 --do_train --fp16 --gradient_accumulation_steps 2 --train_batch_size 16

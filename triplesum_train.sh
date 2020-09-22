@@ -1,0 +1,1 @@
+python triplesum_trainer.py --model_name_or_path ../resources/bert-kt-large --output_dir triplesum --data_dir data/triple --gpus 2 --do_train --fp16 --train_batch_size 48 --eval_batch_size 2 --num_train_epochs 100

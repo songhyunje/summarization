@@ -1,0 +1,1 @@
+python singlesum_trainer.py --model_name_or_path ../resources/bert-kt-large --data_dir data/single --output_dir singlesum --gpus 2 --do_train --fp16 --train_batch_size 32 --eval_batch_size 2 --num_train_epochs 100
